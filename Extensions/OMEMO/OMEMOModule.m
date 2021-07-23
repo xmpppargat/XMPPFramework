@@ -62,8 +62,8 @@ static const int xmppLogLevel = XMPP_LOG_LEVEL_WARN;
     if ([super activate:aXmppStream])
     {
         [self performBlock:^{
-            [self->xmppStream autoAddDelegate:self delegateQueue:self->moduleQueue toModulesOfClass:[XMPPCapabilities class]];
-            self->_tracker = [[XMPPIDTracker alloc] initWithStream:aXmppStream dispatchQueue:self->moduleQueue];
+            [xmppStream autoAddDelegate:self delegateQueue:moduleQueue toModulesOfClass:[XMPPCapabilities class]];
+            _tracker = [[XMPPIDTracker alloc] initWithStream:aXmppStream dispatchQueue:moduleQueue];
         }];
         return YES;
     }
@@ -73,9 +73,9 @@ static const int xmppLogLevel = XMPP_LOG_LEVEL_WARN;
 
 - (void) deactivate {
     [self performBlock:^{
-        [self->_tracker removeAllIDs];
-        self->_tracker = nil;
-        [self->xmppStream removeAutoDelegate:self delegateQueue:self->moduleQueue fromModulesOfClass:[XMPPCapabilities class]];
+        [_tracker removeAllIDs];
+        _tracker = nil;
+        [xmppStream removeAutoDelegate:self delegateQueue:moduleQueue fromModulesOfClass:[XMPPCapabilities class]];
     }];
     [super deactivate];
 }
@@ -118,6 +118,9 @@ static const int xmppLogLevel = XMPP_LOG_LEVEL_WARN;
             [self->multicastDelegate omemo:self failedToFetchDeviceIdsForJID:jid errorIq:responseIq outgoingIq:(XMPPIQ*)info.element];
             return;
         }
+        if(isOurJID){
+            NSLog(@"djk");
+        }
         
         NSArray<NSNumber *> *devices = [responseIq omemo_deviceListFromIqResponse:self.xmlNamespace];
         if (!devices) {
@@ -131,7 +134,7 @@ static const int xmppLogLevel = XMPP_LOG_LEVEL_WARN;
             // Should always be the account bare jid.
             bareJID = [[[info element] to] bareJID];
         }
-        [self->multicastDelegate omemo:self deviceListUpdate:devices fromJID:bareJID incomingElement:responseIq];
+        [multicastDelegate omemo:self deviceListUpdate:devices fromJID:bareJID incomingElement:responseIq];
         [self processIncomingDeviceIds:devices fromJID:bareJID];
     }];
 }
@@ -143,7 +146,7 @@ static const int xmppLogLevel = XMPP_LOG_LEVEL_WARN;
         NSString *eid = [self fixElementId:elementId];
         XMPPIQ *iq = [XMPPIQ omemo_iqFetchDeviceIdsForJID:jid elementId:eid xmlNamespace:self.xmlNamespace];
         [self.tracker addElement:iq block:completion timeout:30];
-        [self->xmppStream sendElement:iq];
+        [xmppStream sendElement:iq];
     }];
 }
 
@@ -166,8 +169,9 @@ static const int xmppLogLevel = XMPP_LOG_LEVEL_WARN;
                 return;
             }
             [weakMulticast omemo:strongSelf publishedBundle:bundle responseIq:responseIq outgoingIq:iq];
+            [self bundleSycFinshied];
         } timeout:30];
-        [self->xmppStream sendElement:iq];
+        [xmppStream sendElement:iq];
     }];
 }
 
@@ -192,6 +196,7 @@ static const int xmppLogLevel = XMPP_LOG_LEVEL_WARN;
                 return;
             }
             OMEMOBundle *bundle = [responseIq omemo_bundle:strongSelf.xmlNamespace];
+            NSLog(@"Bundle: %@",bundle);
             if (bundle) {
                 [weakMulticast omemo:strongSelf fetchedBundle:bundle fromJID:jid responseIq:responseIq outgoingIq:iq];
             } else {
@@ -199,7 +204,7 @@ static const int xmppLogLevel = XMPP_LOG_LEVEL_WARN;
                 [weakMulticast omemo:strongSelf failedToFetchBundleForDeviceId:deviceId fromJID:jid errorIq:responseIq outgoingIq:iq];
             }
         } timeout:30];
-        [self->xmppStream sendElement:iq];
+        [xmppStream sendElement:iq];
     }];
 }
 
@@ -337,11 +342,25 @@ static const int xmppLogLevel = XMPP_LOG_LEVEL_WARN;
 #pragma mark XMPPStreamDelegate methods
 
 - (void)xmppStreamDidAuthenticate:(XMPPStream *)sender {
-    OMEMOBundle *myBundle = [self.omemoStorage fetchMyBundle];
-    [self fetchDeviceIdsForJID:sender.myJID elementId:nil];
-    if (myBundle) {
-        [self publishBundle:myBundle elementId:nil];
-    }
+    [self.omemoStorage fetchMyBundle];
+//    [self fetchDeviceIdsForJID:sender.myJID elementId:nil];
+//    if (myBundle) {
+//        [self publishBundle:myBundle elementId:nil];
+//    }
+    [self publishMyDeviceIds:sender.myJID.bare];
+}
+-(void)publishMyDeviceIds:(NSString *)myJid
+{
+    
+    XMPPJID *myXmppId = [XMPPJID jidWithString:myJid];
+    
+    
+    //Ravi commented this
+    //OMEMOBundle *myBundle = [self.omemoStorage fetchMyBundle];
+    [self fetchDeviceIdsForJID:myXmppId elementId:nil];
+//    if (myBundle) {
+//        [self publishBundle:myBundle elementId:nil];
+//    }
 }
 
 - (void)xmppStream:(XMPPStream *)sender didReceiveMessage:(XMPPMessage *)message {
@@ -428,14 +447,46 @@ static const int xmppLogLevel = XMPP_LOG_LEVEL_WARN;
             return;
         }
         if([deviceIds containsObject:@(myBundle.deviceId)]) {
+            if (![self isBundleSycFinshied]){
+                NSArray *onlyNew = [NSArray arrayWithObject:@(myBundle.deviceId)];
+                NSLog(@"BundleSyc Pending: %@",onlyNew);
+                if(onlyNew.count > 0){
+                    [self publishBundle:myBundle elementId:nil];
+                }
+            }
             return;
         }
         // Republish deviceIds with your deviceId
-        NSArray *appended = [deviceIds arrayByAddingObject:@(myBundle.deviceId)];
-        [self.omemoStorage storeDeviceIds:appended forJID:fromJID];
-        [self publishDeviceIds:appended elementId:[[NSUUID UUID] UUIDString]];
+//        NSArray *appended = [deviceIds arrayByAddingObject:@(myBundle.deviceId)];
+//        [self.omemoStorage storeDeviceIds:appended forJID:fromJID];
+//        [self publishDeviceIds:appended elementId:[[NSUUID UUID] UUIDString]];
+        
+        // Republish deviceIds with your deviceId
+//        NSArray *appended = [deviceIds arrayByAddingObject:@(myBundle.deviceId)];
+        NSLog(@"My Old Device ID:%@",deviceIds);
+        NSArray *onlyNew = [NSArray arrayWithObject:@(myBundle.deviceId)];
+        NSLog(@"My New Device ID:%@",onlyNew);
+        [self.omemoStorage storeDeviceIds:onlyNew forJID:fromJID];
+        [self publishDeviceIds:onlyNew elementId:[[NSUUID UUID] UUIDString]];
+        
+        if(onlyNew.count > 0)
+        {
+            NSLog(@"My New Device ID Need to publish:%@",onlyNew);
+            //Ravi added this
+            [self publishBundle:myBundle elementId:nil];
+            
+            [[NSUserDefaults standardUserDefaults] setObject:[NSDate date] forKey:@"GetHistorydate"];
+        }
     }
 
+}
+
+-(void)bundleSycFinshied{
+    [[NSUserDefaults standardUserDefaults] setBool:YES forKey:@"bundleSycFinshied"];
+    [[NSUserDefaults standardUserDefaults] synchronize];
+}
+-(BOOL)isBundleSycFinshied{
+    return [[NSUserDefaults standardUserDefaults] boolForKey:@"bundleSycFinshied"];
 }
 
 @end
