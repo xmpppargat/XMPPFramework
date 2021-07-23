@@ -1052,12 +1052,12 @@
 		//   </x>
 		// </publish-options>
 		
-		NSXMLElement *x = [self formForOptions:options withFromType:XMLNS_PUBSUB_PUBLISH_OPTIONS];
+// 		NSXMLElement *x = [self formForOptions:options withFromType:XMLNS_PUBSUB_PUBLISH_OPTIONS];
 		
-		NSXMLElement *publishOptions = [NSXMLElement elementWithName:@"publish-options"];
-		[publishOptions addChild:x];
+// 		NSXMLElement *publishOptions = [NSXMLElement elementWithName:@"publish-options"];
+// 		[publishOptions addChild:x];
 		
-		[pubsub addChild:publishOptions];
+// 		[pubsub addChild:publishOptions];
 	}
 	
 	XMPPIQ *iq = [XMPPIQ iqWithType:@"set" to:serviceJID elementID:uuid];
