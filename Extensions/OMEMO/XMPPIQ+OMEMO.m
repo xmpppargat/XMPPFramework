@@ -106,10 +106,10 @@
 
     [x addChild:accessModelField];
     
-    NSXMLElement *publishOptions = [NSXMLElement elementWithName:@"publish-options"];
-    [publishOptions addChild:x];
+    //NSXMLElement *publishOptions = [NSXMLElement elementWithName:@"publish-options"];
+    //[publishOptions addChild:x];
     
-    [pubsub addChild:publishOptions];
+    //[pubsub addChild:publishOptions];
     
     XMPPIQ *iq = [XMPPIQ iqWithType:@"set" elementID:elementId];
     [iq addChild:pubsub];
@@ -231,10 +231,10 @@
     
     [x addChild:accessModelField];
     
-    NSXMLElement *publishOptions = [NSXMLElement elementWithName:@"publish-options"];
-    [publishOptions addChild:x];
+//     NSXMLElement *publishOptions = [NSXMLElement elementWithName:@"publish-options"];
+//     [publishOptions addChild:x];
     
-    [pubsub addChild:publishOptions];
+//     [pubsub addChild:publishOptions];
     
     XMPPIQ *iq = [XMPPIQ iqWithType:@"set" elementID:elementId];
     [iq addChild:pubsub];
