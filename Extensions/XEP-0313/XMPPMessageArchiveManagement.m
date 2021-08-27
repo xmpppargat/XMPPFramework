@@ -106,7 +106,7 @@ static NSString *const QueryIdAttributeName = @"queryid";
 }
 
 - (void)handleMessageArchiveIQ:(XMPPIQ *)iq withInfo:(XMPPBasicTrackingInfo *)trackerInfo {
-	
+	self.resultAutomaticPagingPageSize = NSNotFound;
 	if ([[iq type] isEqualToString:@"result"]) {
 		
 		NSXMLElement *finElement = [iq elementForName:@"fin" xmlns:XMLNS_XMPP_MAM];
