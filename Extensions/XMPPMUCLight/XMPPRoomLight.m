@@ -259,9 +259,9 @@ static NSString *const XMPPRoomLightDestroy = @"urn:xmpp:muclight:0#destroy";
 	//		</iq>
 	
 	dispatch_block_t block = ^{ @autoreleasepool {
-		self->_roomJID = [XMPPJID jidWithUser:[XMPPStream generateUUID]
-									   domain:self.domain
-									 resource:nil];
+		//self->_roomJID = [XMPPJID jidWithUser:[XMPPStream generateUUID]
+									   //domain:self.domain
+									 //resource:nil];
 		
 		NSString *iqID = [XMPPStream generateUUID];
 		NSXMLElement *iq = [NSXMLElement elementWithName:@"iq"];
