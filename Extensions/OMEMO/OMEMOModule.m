@@ -392,10 +392,44 @@ static const int xmppLogLevel = XMPP_LOG_LEVEL_WARN;
         if (!forJID) {
             return;
         }
+        NSXMLElement *customForward = [mam elementForName:@"forward_tag_details" xmlns:@"urn:xmpp:forward.tag:0"];
         NSDate *delayed = mamResult.forwardedStanzaDelayedDeliveryDate;
-        [self receiveMessage:mam forJID:forJID isIncoming:isIncoming delayed:delayed originalMessage:message];
+        if(customForward){
+            XMPPMessage *messageCustomForward = mam.forwardedMessage;
+            NSString *idd = mam.elementID;
+            [messageCustomForward addAttributeWithName:@"id" stringValue:idd];
+            NSXMLElement *messageType = [mam elementForName:@"message_type" xmlns:@"jabber:message:type"];
+            NSXMLElement *thumbUrl = [mam elementForName:@"thumb" xmlns:@"jabber:thumb"];
+            [messageCustomForward detach];
+            [thumbUrl detach];
+            [messageType detach];
+            [customForward detach];
+            [messageCustomForward addChild:thumbUrl];
+            [messageCustomForward addChild:messageType];
+            [messageCustomForward addChild:customForward];
+            NSLog(@"messageCustomForward-->%@",messageCustomForward);
+            [self receiveMessage:messageCustomForward forJID:message.from isIncoming:YES delayed:delayed originalMessage:message];
+        } else {
+            [self receiveMessage:mam forJID:forJID isIncoming:isIncoming delayed:delayed originalMessage:message];
+        }
     } else {
-        [self receiveMessage:message forJID:message.from isIncoming:YES delayed:nil originalMessage:message];
+        NSXMLElement *customForward = [message elementForName:@"forward_tag_details" xmlns:@"urn:xmpp:forward.tag:0"];
+        if(customForward){
+            XMPPMessage *messageCustomForward = message.forwardedMessage;
+            NSXMLElement *messageType = [message elementForName:@"message_type" xmlns:@"jabber:message:type"];
+            NSXMLElement *thumbUrl = [message elementForName:@"thumb" xmlns:@"jabber:thumb"];
+            [messageCustomForward detach];
+            [thumbUrl detach];
+            [messageType detach];
+            [customForward detach];
+            [messageCustomForward addChild:thumbUrl];
+            [messageCustomForward addChild:messageType];
+            [messageCustomForward addChild:customForward];
+            NSLog(@"messageCustomForward-->%@",messageCustomForward);
+            [self receiveMessage:messageCustomForward forJID:message.from isIncoming:YES delayed:nil originalMessage:message];
+        } else {
+            [self receiveMessage:message forJID:message.from isIncoming:YES delayed:nil originalMessage:message];
+        }
     }
 }
 
